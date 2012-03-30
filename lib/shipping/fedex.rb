@@ -215,6 +215,7 @@ module Shipping
 				response[:tracking_number] = REXML::XPath.first(@response, "//FDXShipReply/Tracking/TrackingNumber").text
 				response[:encoded_image] = REXML::XPath.first(@response, "//FDXShipReply/Labels/OutboundLabel").text
 				response[:image] = Tempfile.new("shipping_label")
+				response[:image].binmode
 				response[:image].write Base64.decode64( response[:encoded_image] )
 				response[:image].rewind
 			rescue
