@@ -389,7 +389,7 @@ module Shipping
       @sender_country ||= 'US'
       
       state = nil
-      if @state:
+      if @state
         state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase) : @state
       end
       
