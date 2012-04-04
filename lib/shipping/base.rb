@@ -33,7 +33,7 @@ module Shipping
 		def initialize(options = {})
 		  # Look for global SHIPPING_CONFIG
 		  # if it exists, then use whatever values have been set there
-		  if defined?(SHIPPING_CONFIG) # don't require this to be set, gracefully handle absence
+		  if defined?(SHIPPING_CONFIG) && SHIPPING_CONFIG.is_a?(Hash)
 		    options[:prefs].nil? ? options[:prefs] = SHIPPING_CONFIG : options[:prefs].merge(SHIPPING_CONFIG)
 		  end
 			options[:prefs].each {|pref, value| eval("@#{pref} = #{value.inspect}")} if options[:prefs]
