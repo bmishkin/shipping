@@ -33,10 +33,10 @@ module Shipping
 		def initialize(options = {})
 		  # Look for global SHIPPING_CONFIG
 		  # if it exists, then use whatever values have been set there
-		  if SHIPPING_CONFIG
+		  if defined?(SHIPPING_CONFIG) # don't require this to be set, gracefully handle absence
 		    options[:prefs].nil? ? options[:prefs] = SHIPPING_CONFIG : options[:prefs].merge(SHIPPING_CONFIG)
 		  end
-			options[:prefs].each {|pref, value| eval("@#{pref} = #{value.inspect}")}
+			options[:prefs].each {|pref, value| eval("@#{pref} = #{value.inspect}")} if options[:prefs]
 
 			@required = Array.new
 			@services = Array.new
@@ -277,7 +277,7 @@ module Shipping
 		private
 
 			def prepare_vars #:nodoc:
-				h = eval(%q{instance_variables.map {|var| "#{var.gsub("@",":")} => #{eval(var+'.inspect')}"}.join(", ").chomp(", ")})
+				h = eval(%q{instance_variables.map {|var| "#{var.to_s.gsub("@",":")} => #{eval(var.to_s+'.inspect')}"}.join(", ").chomp(", ")})
 				return eval("{#{h}}")
 			end
 

@@ -22,8 +22,8 @@ module Shipping
       @ups_url ||= "https://wwwcie.ups.com/ups.app/xml"
       @ups_tool = '/Rate'
 
-      state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase unless @state.blank?
-      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.index(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
+      state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase unless @state.blank?
+      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.key(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
 
       state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@country)
       sender_state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@sender_country)
@@ -117,8 +117,8 @@ module Shipping
       @ups_url ||= "https://wwwcie.ups.com/ups.app/xml"
       @ups_tool = '/Rate'
 
-      state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase unless @state.blank?
-      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.index(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
+      state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase unless @state.blank?
+      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.key(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
 
       state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@country)
       sender_state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@sender_country)
@@ -281,8 +281,8 @@ module Shipping
       @ups_url ||= "https://wwwcie.ups.com/ups.app/xml"
       @ups_tool = '/Rate'
 
-      state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase unless @state.blank?
-      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.index(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
+      state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase unless @state.blank?
+      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.key(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
 
       state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@country)
       sender_state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@sender_country)
@@ -365,8 +365,8 @@ module Shipping
         @response.elements.each('//RatedShipment') do |shipmethod|
           index = XPath.first(shipmethod, "Service/Code").text
           shipmethods[index.to_i] = {
-            :service => ServiceTypes.index(index),
-            :service_name => ServiceTypes.index(index).split("_").each{|word| word.capitalize!}.join(" "),
+            :service => ServiceTypes.key(index),
+            :service_name => ServiceTypes.key(index).split("_").each{|word| word.capitalize!}.join(" "),
             :price => XPath.first(shipmethod, "TransportationCharges/MonetaryValue").text.to_f,
             :currency => XPath.first(shipmethod, "TransportationCharges/CurrencyCode").text,
             :billing_weight => XPath.first(shipmethod, "BillingWeight/Weight").text.to_f,
@@ -390,7 +390,7 @@ module Shipping
       
       state = nil
       if @state
-        state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase) : @state
+        state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase) : @state
       end
       
       state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@country)
@@ -453,8 +453,8 @@ module Shipping
           }
       end
 
-      state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase unless @state.blank?
-      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.index(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
+      state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase unless @state.blank?
+      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.key(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
       
       state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@country)
       sender_state = nil unless COUNTRIES_REQUIRING_PROVINCE.include?(@sender_country)
@@ -767,8 +767,8 @@ module Shipping
       @ups_url ||= "https://wwwcie.ups.com/ups.app/xml"
       @ups_tool = '/TimeInTransit'
 
-      state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase unless @state.blank?
-      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.index(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
+      state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase unless @state.blank?
+      sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.key(@sender_state.downcase).upcase : @sender_state.upcase unless @sender_state.blank?
 
       # With UPS need to send two xmls
       # First one to authenticate, second for the request
@@ -827,7 +827,7 @@ module Shipping
           index = XPath.first(shipmethod, "Service/Code").text
           times[index] = {
             :service_name => XPath.first(shipmethod, "Service/Description").text,
-            :service => ServiceTimes.index(index),
+            :service => ServiceTimes.key(index),
             :days => XPath.first(shipmethod, "EstimatedArrival/BusinessTransitDays").text.to_i,
             :date => XPath.first(shipmethod, "EstimatedArrival/Date").text.to_date,
             :time => XPath.first(shipmethod, "EstimatedArrival/Time").text,

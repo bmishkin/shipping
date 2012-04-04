@@ -54,7 +54,7 @@ module Shipping
 			@required = [:name, :company, :phone, :email, :address, :city, :state, :zip]
 			@required += [:fedex_account, :fedex_url]
 
-			state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase rescue nil
+			state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase rescue nil
 
 			@data = String.new
 			b = Builder::XmlMarkup.new :target => @data
@@ -103,8 +103,8 @@ module Shipping
 			@transaction_type ||= 'ship_ground'
 			@weight = (@weight.to_f*10).round/10.0
 			@declared_value = (@declared_value.to_f*100).round/100.0 unless @declared_value.blank?
-			state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase
-			sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.index(@sender_state.downcase).upcase : @sender_state.upcase
+			state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase
+			sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.key(@sender_state.downcase).upcase : @sender_state.upcase
 
 			@data = String.new
 			b = Builder::XmlMarkup.new :target => @data
@@ -246,8 +246,8 @@ module Shipping
 			@weight = (@weight.to_f*10).round/10.0
 			@declared_value = (@declared_value.to_f*100).round/100.0 unless @declared_value.blank?
 
-			state = STATES.has_value?(@state.downcase) ? STATES.index(@state.downcase).upcase : @state.upcase rescue nil
-			sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.index(@sender_state.downcase).upcase : @sender_state.upcase rescue nil
+			state = STATES.has_value?(@state.downcase) ? STATES.key(@state.downcase).upcase : @state.upcase rescue nil
+			sender_state = STATES.has_value?(@sender_state.downcase) ? STATES.key(@sender_state.downcase).upcase : @sender_state.upcase rescue nil
 
 			@data = String.new
 			b = Builder::XmlMarkup.new :target => @data

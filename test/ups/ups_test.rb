@@ -11,6 +11,10 @@ class UpsTest < Test::Unit::TestCase
 		
 		# use demo environment for tests
 		@ship.ups_url = 'https://wwwcie.ups.com/ups.app/xml'
+		@ship.ups_license_number = '12345'
+		@ship.ups_user = 'johnnycakes'
+		@ship.ups_password = 'foobar'
+    @ship.ups_shipper_number = 666
 	end
 
 	def test_price
@@ -19,9 +23,9 @@ class UpsTest < Test::Unit::TestCase
 	end
 	
 	def test_valid_address
-		assert !@ship.valid_address?
+		assert !@ship.ups.valid_address?
 		@ship.city = "Portland"
-		assert @ship.valid_address?
+		assert @ship.ups.valid_address?
 	end
 	
 	def test_label

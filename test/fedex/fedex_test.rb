@@ -11,6 +11,8 @@ class FedExTest < Test::Unit::TestCase
 		
 		# use demo environment for tests
 		@ship.fedex_url = 'https://gatewaybeta.fedex.com/GatewayDC'
+    @ship.fedex_account = '123' 
+    @ship.fedex_meter = '456'
 	end
 
 	def test_price
