@@ -207,6 +207,13 @@ module Shipping
 					b.Type @label_type || '2DCOMMON'
 					b.ImageType @image_type || 'PNG'
 				}
+
+			  # BJM: adding reference info
+				b.ReferenceInfo { |b|
+					b.CustomerReference @customer_reference unless @customer_reference.blank?
+          b.PONumber @po_number unless @po_number.blank?
+          b.InvoiceNumber @invoice_number unless @invoice_number.blank?
+			  }
 			}
 			get_response @fedex_url
 
