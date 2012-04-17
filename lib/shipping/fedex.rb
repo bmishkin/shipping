@@ -115,8 +115,9 @@ module Shipping
 					b.MeterNumber @fedex_meter
 					b.CarrierCode TransactionTypes[@transaction_type][1]
 				}
-				b.ShipDate((Time.now).strftime("%Y-%m-%d"))
-				b.ShipTime((Time.now).strftime("%H:%M:%S"))
+				b.ShipDate(@ship_date.strftime("%Y-%m-%d")) unless @ship_date.blank? # api handles blank gracefully (as today)
+				#b.ShipTime((Time.now).strftime("%H:%M:%S"))
+
 				b.DropoffType @dropoff_type || 'REGULARPICKUP'
 				b.Service ServiceTypes[@service_type] || ServiceTypes['ground_service'] # default to ground service
 				b.Packaging PackageTypes[@packaging_type] || 'YOURPACKAGING'
@@ -201,6 +202,8 @@ module Shipping
 							b.ShipAlert @other_ship_alert ? 'true' : 'false'
 							b.LanguageCode @other_language || 'EN' # FR also available
 						} unless @other_email.blank?
+            
+          # FutureShipDate  
 					}
 				} unless @message.blank?
 				b.Label { |b|
