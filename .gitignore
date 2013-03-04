@@ -1,3 +1,4 @@
 .rvmrc
 rdoc/*
 Gemfile.lock
+.DS_Store
