@@ -98,7 +98,7 @@ module Shipping
 		def label     
 			@required =  [:phone,        :email,        :address,        :city,        :state,        :zip        ]
 			@required += [:sender_phone, :sender_email, :sender_address, :sender_city, :sender_state, :sender_zip ]
-			@required += [:fedex_account, :fedex_url, :fedex_meter]
+			@required += [:fedex_account, :fedex_url, :fedex_meter, :fedex_password, :fedex_key]
 
 			@transaction_type ||= 'ship_ground'
 			@weight = (@weight.to_f*10).round/10.0
@@ -108,122 +108,139 @@ module Shipping
 
 			@data = String.new
 			b = Builder::XmlMarkup.new :target => @data
-			b.instruct!
-			b.FDXShipRequest('xmlns:api' => 'http://www.fedex.com/fsmapi', 'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance', 'xsi:noNamespaceSchemaLocation' => 'FDXShipRequest.xsd') { |b|
-				b.RequestHeader { |b|
-					b.AccountNumber @fedex_account
-					b.MeterNumber @fedex_meter
-					b.CarrierCode TransactionTypes[@transaction_type][1]
-				}
-				b.ShipDate(@ship_date.strftime("%Y-%m-%d")) unless @ship_date.blank? # api handles blank gracefully (as today)
-				#b.ShipTime((Time.now).strftime("%H:%M:%S"))
+  
+      # updated API 
+      # see http://images.fedex.com/us/developer/product/WebServices/MyWebHelp/DeveloperGuide2012.pdf
+      b.tag!('SOAP-ENV:Envelope',
+              { 'xmlns:SOAP-ENV' => "http://schemas.xmlsoap.org/soap/envelope/",
+                'xmlns:SOAP-ENC' => "http://schemas.xmlsoap.org/soap/encoding/",
+                'xmlns:xsi'=> "http://www.w3.org/2001/XMLSchema-instance",
+                'xmlns:xsd'=> "http://www.w3.org/2001/XMLSchema",
+                'xmlns' => "http://fedex.com/ws/ship/v12"}) { |b|
+        b.tag!('SOAP-ENV:Body') { |b|
+          b.ProcessShipmentRequest('xmlns:ns' => 'http://fedex.com/ws/ship/v12', 'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance') { |b|
 
-				b.DropoffType @dropoff_type || 'REGULARPICKUP'
-				b.Service ServiceTypes[@service_type] || ServiceTypes['ground_service'] # default to ground service
-				b.Packaging PackageTypes[@packaging_type] || 'YOURPACKAGING'
-				b.WeightUnits @weight_units || 'LBS' # or KGS
-				b.Weight @weight
-				b.CurrencyCode @currency_code || 'USD'
-				b.Origin { |b|
-					b.Contact { |b|
-						if @sender_name.to_s.size > 2
-							b.PersonName @sender_name
-							b.CompanyName @sender_company unless @sender_company.blank?
-						elsif @sender_company.to_s.size > 2
-							b.PersonName @sender_name unless @sender_name.blank?
-							b.CompanyName @sender_company
-						else
-							raise ShippingError, "Either the sender_name or the sender_company value must be bigger than 2 characters."
-						end
-						b.Department @sender_department unless @sender_department.blank?
-						b.PhoneNumber @sender_phone.gsub(/[^\d]/,"")
-						b.PagerNumber @sender_pager.gsub(/[^\d]/,"") if @sender_pager.class == String
-						b.FaxNumber @sender_fax.gsub(/[^\d]/,"") if @sender_fax.class == String
-						b.tag! :"E-MailAddress", @sender_email
-					}
-					b.Address { |b|
-						b.Line1 @sender_address
-						b.Line2 @sender_address2 unless @sender_address2.blank?
-						b.City @sender_city
-						b.StateOrProvinceCode sender_state
-						b.PostalCode @sender_zip
-						b.CountryCode @sender_country || 'US'
-					}
-				}
-				b.Destination { |b|
-					b.Contact { |b|
-						if @name.to_s.size > 2
-							b.PersonName @name
-							b.CompanyName @company unless @company.blank?
-						elsif @company.to_s.size > 2
-							b.PersonName @name unless @name.blank?
-							b.CompanyName @company
-						else
-							raise ShippingError, "Either the name or the company value must be bigger than 2 characters."
-						end
-						b.Department @department unless @department.blank?
-						b.PhoneNumber @phone.gsub(/[^\d]/,"")
-						b.PagerNumber @pager.gsub(/[^\d]/,"") if @pager.class == String
-						b.FaxNumber @fax.gsub(/[^\d]/,"") if @fax.class == String
-						b.tag! :"E-MailAddress", @email
-					}
-					b.Address { |b|
-						b.Line1 @address
-						b.Line2 @address2 unless @address2.blank?
-						b.City @city
-						b.StateOrProvinceCode state
-						b.PostalCode @zip
-						b.CountryCode @country || 'US'
-					}
-				}
-				b.Payment { |b|
-					b.PayorType PaymentTypes[@pay_type] || 'SENDER'
-					b.Payor { |b|
-						b.AccountNumber @payor_account_number
-						b.CountryCode @payor_country_code unless @payor_country_code.blank?
-					} unless @payor_account_number.blank?
-				}
-				b.RMA { |b|
-					b.Number @rma_number
-				} unless @rma_number.blank?
-				b.SpecialServices { |b|
-					b.EMailNotification { |b|
-						b.ShipAlertOptionalMessage @message
-						b.Shipper { |b|
-							b.ShipAlert @shipper_ship_alert ? 'true' : 'false'
-							b.LanguageCode @shipper_language || 'EN' # FR also available
-						}
-						b.Recipient { |b|
-							b.ShipAlert @recipient_ship_alert ? 'true' : 'false'
-							b.LanguageCode @recipient_language || 'EN' # FR also available
-						}
-						b.Other { |b|
-							b.tag! :"E-MailAddress", @other_email
-							b.ShipAlert @other_ship_alert ? 'true' : 'false'
-							b.LanguageCode @other_language || 'EN' # FR also available
-						} unless @other_email.blank?
+            b.WebAuthenticationDetail {|c|
+              c.UserCredential { |d|
+                d.Key @fedex_key
+                d.Password @fedex_password
+              }
+            }
             
-          # FutureShipDate  
-					}
-				} unless @message.blank?
-				b.Label { |b|
-					b.Type @label_type || '2DCOMMON'
-					b.ImageType @image_type || 'PNG'
-				}
+            b.ClientDetail { |c|
+              c.AccountNumber @fedex_account
+              c.MeterNumber @fedex_meter
+            }
 
-			  # BJM: adding reference info
-				b.ReferenceInfo { |b|
-					b.CustomerReference @customer_reference unless @customer_reference.blank?
-          b.PONumber @po_number unless @po_number.blank?
-          b.InvoiceNumber @invoice_number unless @invoice_number.blank?
-			  }
+            b.Version {|c|
+              c.ServiceId 'ship'
+              c.Major 12
+              c.Intermediate 0
+              c.Minor 0
+            }
+
+            b.RequestedShipment { |c|
+              c.ShipTimestamp (@ship_date || Time.zone.now).strftime('%FT%H:%M:%S.%LZ')
+              c.DropoffType @dropoff_type || 'REGULAR_PICKUP'
+              c.ServiceType ServiceTypes[@service_type] || ServiceTypes['express_saver'] # default to saver
+              c.PackagingType PackageTypes[@packaging_type] || 'YOUR_PACKAGING'
+      				c.Shipper { |b|
+      					b.Contact { |b|
+      						if @sender_name.to_s.size > 2
+      							b.PersonName @sender_name
+      							b.CompanyName @sender_company unless @sender_company.blank?
+      						elsif @sender_company.to_s.size > 2
+      							b.PersonName @sender_name unless @sender_name.blank?
+      							b.CompanyName @sender_company
+      						else
+      							raise ShippingError, "Either the sender_name or the sender_company value must be bigger than 2 characters."
+      						end
+      						b.Department @sender_department unless @sender_department.blank?
+      						b.PhoneNumber @sender_phone.gsub(/[^\d]/,"")
+      						b.PagerNumber @sender_pager.gsub(/[^\d]/,"") if @sender_pager.class == String
+      						b.FaxNumber @sender_fax.gsub(/[^\d]/,"") if @sender_fax.class == String
+      						b.EMailAddress @sender_email
+      					}
+      					b.Address { |b|
+      						b.StreetLines @sender_address
+      						b.StreetLines @sender_address2 unless @sender_address2.blank?
+      						b.City @sender_city
+      						b.StateOrProvinceCode sender_state
+      						b.PostalCode @sender_zip
+      						b.CountryCode @sender_country || 'US'
+      					}
+      				}
+      				c.Recipient { |b|
+      					b.Contact { |b|
+      						if @name.to_s.size > 2
+      							b.PersonName @name
+      							b.CompanyName @company unless @company.blank?
+      						elsif @company.to_s.size > 2
+      							b.PersonName @name unless @name.blank?
+      							b.CompanyName @company
+      						else
+      							raise ShippingError, "Either the name or the company value must be bigger than 2 characters."
+      						end
+      						b.Department @department unless @department.blank?
+      						b.PhoneNumber @phone.gsub(/[^\d]/,"")
+      						b.PagerNumber @pager.gsub(/[^\d]/,"") if @pager.class == String
+      						b.FaxNumber @fax.gsub(/[^\d]/,"") if @fax.class == String
+      						b.EMailAddress @email
+      					}
+      					b.Address { |b|
+      						b.StreetLines @address
+      						b.StreetLines @address2 unless @address2.blank?
+      						b.City @city
+      						b.StateOrProvinceCode state
+      						b.PostalCode @zip
+      						b.CountryCode @country || 'US'
+      					}
+      				}
+              c.ShippingChargesPayment { |b|
+    					  b.PaymentType PaymentTypes[@pay_type] || 'SENDER'
+    					  b.Payor { |b|
+    					    b.ResponsibleParty { |c|
+    					      c.AccountNumber @payor_account_number || @fedex_account
+    						    c.Contact
+                    # b.CountryCode @payor_country_code unless @payor_country_code.blank?
+    					    }
+    					  }
+    				  }
+      			  c.LabelSpecification { |b|
+      					b.LabelFormatType @label_type || 'COMMON2D'
+      					b.ImageType @image_type || 'PNG'
+      				}
+      				c.RateRequestTypes 'LIST'
+      				c.PackageCount 1
+      				c.RequestedPackageLineItems { |d|
+      				  d.SequenceNumber 1
+                d.Weight { |e|
+                  e.Units @weight_units || 'LB' # or KGS
+                  e.Value @weight                
+                }
+                d.CustomerReferences {|e|
+                  e.CustomerReferenceType 'INVOICE_NUMBER'
+                  e.Value @invoice_number
+                  # can only specify one
+                  # e.CustomerReferenceType 'CUSTOMER_REFERENCE'
+                  # e.Value @customer_reference
+                }
+              }
+            }   
+          }
+        }
 			}
 			get_response @fedex_url
 
 			begin  
 				response = Hash.new       
-				response[:tracking_number] = REXML::XPath.first(@response, "//FDXShipReply/Tracking/TrackingNumber").text
-				response[:encoded_image] = REXML::XPath.first(@response, "//FDXShipReply/Labels/OutboundLabel").text
+				#response[:tracking_number] = REXML::XPath.first(@response, "//FDXShipReply/Tracking/TrackingNumber").text
+        puts "[TRYING TO PARSE RESPONSE...] (#{@response.first(100)})"
+				response[:tracking_number] = REXML::XPath.first(@response,  'soapenv:Envelope/soapenv:Body/v12:ProcessShipmentReply/v12:CompletedShipmentDetail/v12:CompletedPackageDetails/v12:TrackingIds/v12:TrackingNumber').text
+	      puts "[TRACKING] #{response[:tracking_nubmer]}"
+				#response[:encoded_image] = REXML::XPath.first(@response, "//FDXShipReply/Labels/OutboundLabel").text
+				response[:encoded_image] = REXML::XPath.first(@response, 'soapenv:Envelope/soapenv:Body/v12:ProcessShipmentReply/v12:CompletedShipmentDetail/v12:CompletedPackageDetails/v12:Label/v12:Parts/v12:Image').text
+        puts "[IMAGE DATA] #{response[:encoded_image]}"
 				response[:image] = Tempfile.new("shipping_label")
 				response[:image].binmode
 				response[:image].write Base64.decode64( response[:encoded_image] )
@@ -466,12 +483,11 @@ module Shipping
 
 		def get_error
 			return if @response.class != REXML::Document
-			error = REXML::XPath.first(@response, "//Error")
+			error = REXML::XPath.first(@response, "//con:fault")
 			return if !error
 			
-			code = REXML::XPath.first(error, "//Code").text
-			message = REXML::XPath.first(error, "//Message").text
-
+			code = REXML::XPath.first(error, "//con:errorCode").text
+			message = REXML::XPath.first(error, "//con1:message").text
 			return "Error #{code}: #{message}"
 		end
 
@@ -532,32 +548,38 @@ module Shipping
 		# The following type hashes are to allow cross-api data retrieval
 
 		ServiceTypes = {
-			"priority" => "PRIORITYOVERNIGHT",
-			"2day" => "FEDEX2DAY",
-			"standard_overnight" => "STANDARDOVERNIGHT",
-			"first_overnight" => "FIRSTOVERNIGHT",
-			"express_saver" => "FEDEXEXPRESSSAVER",
-			"1day_freight" => "FEDEX1DAYFREIGHT",
-			"2day_freight" => "FEDEX2DAYFREIGHT",
-			"3day_freight" => "FEDEX3DAYFREIGHT",
-			"international_priority" => "INTERNATIONALPRIORITY",
-			"international_economy" => "INTERNATIONALECONOMY",
-			"international_first" => "INTERNATIONALFIRST",
-			"international_priority_freight" => "INTERNATIONALPRIORITYFREIGHT",
-			"international_economy_freight" => "INTERNATIONALECONOMYFREIGHT",
-			"home_delivery" => "GROUNDHOMEDELIVERY",
-			"ground_service" => "FEDEXGROUND",
-			"international_ground_service" => "INTERNATIONALGROUND"
+			"priority" => "PRIORITY_OVERNIGHT",
+			"standard_overnight" => "STANDARD_OVERNIGHT",
+			"2day" => "FEDEX_2_DAY",
+      "2day_am" => "FEDEX_2_DAY_AM",
+			"express_saver" => "FEDEX_EXPRESS_SAVER",
+      "first_freight" => 'FEDEX_FIRST_FREIGHT',
+      "freight_priority" => 'FEDEX_FREIGHT_PROIRITY',
+      'freight_economy' => 'FEDEX_FREGHT_ECONOMY',
+			"first_overnight" => "FIRST_OVERNIGHT"
+
+      # 
+      # "1day_freight" => "FEDEX1DAYFREIGHT",
+      # "2day_freight" => "FEDEX2DAYFREIGHT",
+      # "3day_freight" => "FEDEX3DAYFREIGHT",
+      # "international_priority" => "INTERNATIONALPRIORITY",
+      # "international_economy" => "INTERNATIONALECONOMY",
+      # "international_first" => "INTERNATIONALFIRST",
+      # "international_priority_freight" => "INTERNATIONALPRIORITYFREIGHT",
+      # "international_economy_freight" => "INTERNATIONALECONOMYFREIGHT",
+      # "home_delivery" => "GROUNDHOMEDELIVERY",
+      # "ground_service" => "FEDEXGROUND",
+      # "international_ground_service" => "INTERNATIONALGROUND"
 		}
 
 		PackageTypes = {
-			"fedex_envelope" => "FEDEXENVELOPE",
-			"fedex_pak" => "FEDEXPAK",
-			"fedex_box" => "FEDEXBOX",
-			"fedex_tube" => "FEDEXTUBE",
-			"fedex_10_kg_box" => "FEDEX10KGBOX",
-			"fedex_25_kg_box" => "FEDEX25KGBOX",
-			"your_packaging" => "YOURPACKAGING"
+			"fedex_envelope" => "FEDEX_ENVELOPE",
+			"fedex_pak" => "FEDEX_PAK",
+			"fedex_box" => "FEDEX_BOX",
+			"fedex_tube" => "FEDEX_TUBE",
+      # "fedex_10_kg_box" => "FEDEX10KGBOX",
+      # "fedex_25_kg_box" => "FEDEX25KGBOX",
+			"your_packaging" => "YOUR_PACKAGING"
 		}
 
 		DropoffTypes = {

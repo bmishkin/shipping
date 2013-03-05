@@ -15,7 +15,7 @@ module Shipping
 		attr_accessor :debug
 
 		attr_writer :ups_license_number, :ups_shipper_number, :ups_user, :ups_password, :ups_url, :ups_tool
-		attr_writer :fedex_account, :fedex_meter, :fedex_url, :fedex_package_weight_limit_in_lbs
+		attr_writer :fedex_account, :fedex_meter, :fedex_password, :fedex_key, :fedex_url, :fedex_package_weight_limit_in_lbs
 
 		attr_accessor :name, :phone, :company, :email, :address, :address2, :address3, :city, :state, :zip, :country, :attention
 		attr_accessor :sender_name, :sender_phone, :sender_company, :sender_email, :sender_address, :sender_address2, :sender_address3, :sender_city, :sender_state, :sender_zip, :sender_country, :sender_attention
