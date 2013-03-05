@@ -142,7 +142,12 @@ module Shipping
             b.RequestedShipment { |c|
               c.ShipTimestamp (@ship_date || Time.zone.now).strftime('%FT%H:%M:%S.%LZ')
               c.DropoffType @dropoff_type || 'REGULAR_PICKUP'
-              c.ServiceType ServiceTypes[@service_type] || ServiceTypes['express_saver'] # default to saver
+
+              # must use home delivery if ground && @residential
+              srv_type = ServiceTypes[@service_type || 'ground_service']
+              srv_type = ServiceTypes['home_delivery'] if srv_type == 'FEDEX_GROUND' && @residential
+
+              c.ServiceType srv_type
               c.PackagingType PackageTypes[@packaging_type] || 'YOUR_PACKAGING'
       				c.Shipper { |b|
       					b.Contact { |b|
@@ -194,6 +199,8 @@ module Shipping
       						b.StateOrProvinceCode state
       						b.PostalCode @zip
       						b.CountryCode @country || 'US'
+      						b.Residential @residential
+
       					}
       				}
               c.ShippingChargesPayment { |b|
@@ -234,13 +241,8 @@ module Shipping
 
 			begin  
 				response = Hash.new       
-				#response[:tracking_number] = REXML::XPath.first(@response, "//FDXShipReply/Tracking/TrackingNumber").text
-        puts "[TRYING TO PARSE RESPONSE...] (#{@response.first(100)})"
-				response[:tracking_number] = REXML::XPath.first(@response,  'soapenv:Envelope/soapenv:Body/v12:ProcessShipmentReply/v12:CompletedShipmentDetail/v12:CompletedPackageDetails/v12:TrackingIds/v12:TrackingNumber').text
-	      puts "[TRACKING] #{response[:tracking_nubmer]}"
-				#response[:encoded_image] = REXML::XPath.first(@response, "//FDXShipReply/Labels/OutboundLabel").text
-				response[:encoded_image] = REXML::XPath.first(@response, 'soapenv:Envelope/soapenv:Body/v12:ProcessShipmentReply/v12:CompletedShipmentDetail/v12:CompletedPackageDetails/v12:Label/v12:Parts/v12:Image').text
-        puts "[IMAGE DATA] #{response[:encoded_image]}"
+        response[:tracking_number] = REXML::XPath.first(@response, '//v12:TrackingNumber').text
+        response[:encoded_image] = REXML::XPath.first(@response, '//v12:Image').text
 				response[:image] = Tempfile.new("shipping_label")
 				response[:image].binmode
 				response[:image].write Base64.decode64( response[:encoded_image] )
@@ -556,8 +558,10 @@ module Shipping
       "first_freight" => 'FEDEX_FIRST_FREIGHT',
       "freight_priority" => 'FEDEX_FREIGHT_PROIRITY',
       'freight_economy' => 'FEDEX_FREGHT_ECONOMY',
-			"first_overnight" => "FIRST_OVERNIGHT"
-
+			"first_overnight" => "FIRST_OVERNIGHT",
+      "ground_service" => "FEDEX_GROUND",
+      "home_delivery" => "GROUND_HOME_DELIVERY",
+# 
       # 
       # "1day_freight" => "FEDEX1DAYFREIGHT",
       # "2day_freight" => "FEDEX2DAYFREIGHT",
@@ -567,8 +571,6 @@ module Shipping
       # "international_first" => "INTERNATIONALFIRST",
       # "international_priority_freight" => "INTERNATIONALPRIORITYFREIGHT",
       # "international_economy_freight" => "INTERNATIONALECONOMYFREIGHT",
-      # "home_delivery" => "GROUNDHOMEDELIVERY",
-      # "ground_service" => "FEDEXGROUND",
       # "international_ground_service" => "INTERNATIONALGROUND"
 		}
 
