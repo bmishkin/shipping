@@ -416,14 +416,43 @@ module Shipping
 
 			@data = String.new
 			b = Builder::XmlMarkup.new :target => @data
-			b.instruct!
-			b.FDXShipDeleteRequest('xmlns:api' => 'http://www.fedex.com/fsmapi', 'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance', 'xsi:noNamespaceSchemaLocation' => 'FDXShipDeleteRequest.xsd') { |b|
-				b.RequestHeader { |b|
-					b.AccountNumber @fedex_account
-					b.MeterNumber @fedex_meter
-					b.CarrierCode TransactionTypes[@transaction_type][1]
-				}
-				b.TrackingNumber tracking_number
+      # updated API 
+      # see http://images.fedex.com/us/developer/product/WebServices/MyWebHelp/DeveloperGuide2012.pdf
+      b.tag!('SOAP-ENV:Envelope',
+              { 'xmlns:SOAP-ENV' => "http://schemas.xmlsoap.org/soap/envelope/",
+                'xmlns:SOAP-ENC' => "http://schemas.xmlsoap.org/soap/encoding/",
+                'xmlns:xsi'=> "http://www.w3.org/2001/XMLSchema-instance",
+                'xmlns:xsd'=> "http://www.w3.org/2001/XMLSchema",
+                'xmlns' => "http://fedex.com/ws/ship/v12"}) { |b|
+        b.tag!('SOAP-ENV:Body') { |b|
+          b.DeleteShipmentRequest('xmlns:ns' => 'http://fedex.com/ws/ship/v12', 'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance') { |b|
+
+            b.WebAuthenticationDetail {|c|
+              c.UserCredential { |d|
+                d.Key @fedex_key
+                d.Password @fedex_password
+              }
+            }
+            
+            b.ClientDetail { |c|
+              c.AccountNumber @fedex_account
+              c.MeterNumber @fedex_meter
+            }
+
+            b.Version {|c|
+              c.ServiceId 'ship'
+              c.Major 12
+              c.Intermediate 0
+              c.Minor 0
+            }
+
+            b.TrackingId {|c|
+              c.TrackingIdType 'FEDEX'
+              c.TrackingNumber tracking_number
+            }
+            b.DeletionControl 'DELETE_ALL_PACKAGES'
+          }
+        }
 			}
 			
 			get_response @fedex_url
